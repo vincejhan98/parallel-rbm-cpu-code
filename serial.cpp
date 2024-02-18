@@ -4,17 +4,11 @@
 #include <vector>
 #include <algorithm>
 
-// CUSTOM
-// #define grid_square_size (cutoff)
-// #define grid_len (static_cast<int>(size / grid_square_size) + 1)
-
 //Grid Square Data Structure
 typedef struct grid_square {
     std::vector<particle_t*> parts;
     std::vector<grid_square*> neighbors;
-    // int num_parts;
 } grid_square;
-
 
 grid_square** grid;
 
@@ -72,8 +66,6 @@ void init_simulation(particle_t* parts, int num_parts, double size) {
         grid[i] = new grid_square[grid_len];
 
         for (int j = 0; j < grid_len; j++) {
-            // grid[i][j].num_parts = 0;
-
             // initializing vectors made a slight difference
             grid[i][j].parts = {};
             grid[i][j].neighbors = {};
@@ -103,7 +95,6 @@ void init_simulation(particle_t* parts, int num_parts, double size) {
         int grid_index_y = static_cast<int>(parts[i].y/grid_square_size);
 
         grid[grid_index_x][grid_index_y].parts.push_back(&parts[i]);
-        // grid[grid_index_x][grid_index_y].num_parts += 1;
     }
 
 }
@@ -132,15 +123,6 @@ void simulate_one_step(particle_t* parts, int num_parts, double size) {
         }
     }
 
-    // Erasing all particles within grids for reassignment (TODO: suboptimal and terrible to parallelize)
-    // Restructure so that we check if a particle leaves the grid bounds and update the correct neighbor
-    // for (int i = 0; i < grid_len; i++) {
-    //     for (int j = 0; j < grid_len; j++) {
-    //         grid[i][j].parts.clear();
-    //         grid[i][j].num_parts = 0;
-    //     }
-    // }
-
     // Move Particles
     for (int i = 0; i < num_parts; ++i) {
         int old_grid_index_x = static_cast<int>(parts[i].x/grid_square_size);
@@ -162,8 +144,6 @@ void simulate_one_step(particle_t* parts, int num_parts, double size) {
 
             // add particle to new grid
             grid[new_grid_index_x][new_grid_index_y].parts.push_back(&parts[i]);
-        }
-
-        
+        }        
     }
 }
