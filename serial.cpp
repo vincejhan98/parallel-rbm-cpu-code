@@ -147,5 +147,23 @@ void simulate_one_step(particle_t* parts, int num_parts, double size) {
         int old_grid_index_y = static_cast<int>(parts[i].y/grid_square_size);
 
         move(parts[i], size);
+
+        int new_grid_index_x = static_cast<int>(parts[i].x/grid_square_size);
+        int new_grid_index_y = static_cast<int>(parts[i].y/grid_square_size);
+        
+        // if grid index changed, pop it from the old grid and add to new grid
+        if (old_grid_index_x != new_grid_index_x || old_grid_index_y != new_grid_index_y) {
+            // get iterator index of the element in old grid
+            auto it = std::find(grid[old_grid_index_x][old_grid_index_y].parts.begin(), 
+                                grid[old_grid_index_x][old_grid_index_y].parts.end(), 
+                                &parts[i]);
+            // Remove from old grid
+            grid[old_grid_index_x][old_grid_index_y].parts.erase(it);
+
+            // add particle to new grid
+            grid[new_grid_index_x][new_grid_index_y].parts.push_back(&parts[i]);
+        }
+
+        
     }
 }
