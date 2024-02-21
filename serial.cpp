@@ -57,7 +57,7 @@ static int grid_len;
 static double grid_square_size;
 
 void init_simulation(particle_t* parts, int num_parts, double size) {
-    grid_len = static_cast<int>(size / (cutoff*1.5)) + 1; 
+    grid_len = static_cast<int>(size / (cutoff*1.5)) + 1;
     grid_square_size = size / static_cast<double>(grid_len);
 
     // Initialize Grid
@@ -73,7 +73,7 @@ void init_simulation(particle_t* parts, int num_parts, double size) {
     }
 
     // Initialize neighbor list per grid square
-    int square_reach = ceil(cutoff  / grid_square_size); //static_cast<int>(cutoff  / grid_square_size);
+    int square_reach = static_cast<int>(cutoff  / grid_square_size) + 1; //static_cast<int>(cutoff  / grid_square_size);
     for (int i = 0; i < grid_len; i++) {
         for (int j = 0; j < grid_len; j++) {
             int lower_x = std::max(0, i - square_reach);

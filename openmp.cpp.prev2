@@ -13,15 +13,13 @@ typedef struct grid_square {
 } grid_square;
 
 // grid_square** grid;
-std::vector<std::vector<grid_square>> grid;
+// std::vector<std::vector<grid_square>> grid;
+grid_square** grid;
 static int grid_len;
 static double grid_square_size;
 
 // Apply the force from neighbor to particle
 void apply_force(particle_t& particle, particle_t& neighbor) {
-    if (particle.x == neighbor.x && particle.y == neighbor.y) {
-        return;
-    }
     // Calculate Distance
     double dx = neighbor.x - particle.x;
     double dy = neighbor.y - particle.y;
@@ -66,10 +64,9 @@ void init_simulation(particle_t* parts, int num_parts, double size) {
     grid_square_size = size / static_cast<double>(grid_len);
 
     // Initialize Grid
-    // grid = new grid_square*[grid_len];
-    grid = std::vector<std::vector<grid_square>>(grid_len, std::vector<grid_square>(grid_len));
+    grid = new grid_square*[grid_len];
     for (int i = 0; i < grid_len; i++) {
-        // grid[i] = new grid_square[grid_len];
+        grid[i] = new grid_square[grid_len];
 
         for (int j = 0; j < grid_len; j++) {
             // initializing vectors made a slight difference
@@ -79,7 +76,7 @@ void init_simulation(particle_t* parts, int num_parts, double size) {
     }
 
     // Initialize neighbor list per grid square
-    int square_reach = ceil(cutoff  / grid_square_size); //static_cast<int>(cutoff  / grid_square_size);
+    int square_reach = static_cast<int>(cutoff  / grid_square_size) + 1; //static_cast<int>(cutoff  / grid_square_size);
     for (int i = 0; i < grid_len; i++) {
         for (int j = 0; j < grid_len; j++) {
             int lower_x = std::max(0, i - square_reach);
@@ -107,6 +104,7 @@ void init_simulation(particle_t* parts, int num_parts, double size) {
 }
 
 void simulate_one_step(particle_t* parts, int num_parts, double size) {
+    // 1. Apply force
     // number of threads per row and col
     int total_threads = omp_get_num_threads(); // 256
     int num_threads_row = static_cast<int>( sqrt(total_threads) ); // 16
@@ -114,8 +112,8 @@ void simulate_one_step(particle_t* parts, int num_parts, double size) {
 
     // grid_len == 48
     // count number of threads per row and col in grid
-    int grids_per_thread_row = ceil(grid_len / num_threads_row); // 3
-    int grids_per_thread_col = ceil(grid_len / num_threads_col); // 3
+    int grids_per_thread_row = (grid_len / num_threads_row) + 1; // 3
+    int grids_per_thread_col = (grid_len / num_threads_col) + 1; // 3
 
     // assign row and col range for this thread
     int tid = omp_get_thread_num();
@@ -131,7 +129,6 @@ void simulate_one_step(particle_t* parts, int num_parts, double size) {
             // Per particle in grid square...
             for (int k = 0; k < grid[i][j].parts.size(); k++) {
                 // // Zero old acceleration
-				// std::cout << grid[i][j].parts[k]->ax << std::endl;
                 grid[i][j].parts[k]->ax = 0;
                 grid[i][j].parts[k]->ay = 0;
 
@@ -140,31 +137,27 @@ void simulate_one_step(particle_t* parts, int num_parts, double size) {
 
                     // Per neighboring grid square particle... 
                     for (int m = 0; m < grid[i][j].neighbors[l]->parts.size(); m++) {
-                        // #pragma omp critical
-                        // {   
-                        //     std::cout <<"i, j, k, l, m are " << i << ", " << j << ", " << k << ", " << l << ", " << m << std::endl;
-                            // segfault occurs here!!!!!
-                            apply_force(*grid[i][j].parts[k], *grid[i][j].neighbors[l]->parts[m]);
-                            // std::cout <<"b" << std::endl;
-                        // }
-                        
+                        apply_force(*grid[i][j].parts[k], *grid[i][j].neighbors[l]->parts[m]);
                     }
                 }
             }
-            
         }
     }
 
-#pragma omp barrier
-	// #pragma omp single
-#pragma omp master
-{
-    // std::cout << "1" << std::endl;
+    #pragma omp barrier
+    // 2. move
+    // #pragma omp master
+    // {
     // Move Particles
-    for (int i = 0; i < num_parts; ++i) {
+    int parts_block_size = (num_parts / total_threads) + 1;
+    int parts_min = tid * parts_block_size;
+    int parts_max = std::min(num_parts, parts_min + parts_block_size);
+
+    for (int i = parts_min; i < parts_max; ++i) {
         int old_grid_index_x = static_cast<int>(parts[i].x/grid_square_size);
         int old_grid_index_y = static_cast<int>(parts[i].y/grid_square_size);
 
+        // Parallelizing this
         move(parts[i], size);
 
         int new_grid_index_x = static_cast<int>(parts[i].x/grid_square_size);
@@ -172,18 +165,21 @@ void simulate_one_step(particle_t* parts, int num_parts, double size) {
         
         // if grid index changed, pop it from the old grid and add to new grid
         if (old_grid_index_x != new_grid_index_x || old_grid_index_y != new_grid_index_y) {
-            // get iterator index of the element in old grid
-            auto it = std::find(grid[old_grid_index_x][old_grid_index_y].parts.begin(), 
-                                grid[old_grid_index_x][old_grid_index_y].parts.end(), 
-                                &parts[i]);
-            // Remove from old grid
-            grid[old_grid_index_x][old_grid_index_y].parts.erase(it);
+            #pragma omp critical
+            {
+                // get iterator index of the element in old grid
+                auto it = std::find(grid[old_grid_index_x][old_grid_index_y].parts.begin(), 
+                                    grid[old_grid_index_x][old_grid_index_y].parts.end(), 
+                                    &parts[i]);
 
-            // add particle to new grid
-            grid[new_grid_index_x][new_grid_index_y].parts.push_back(&parts[i]);
-        }        
+                // Remove from old grid
+                grid[old_grid_index_x][old_grid_index_y].parts.erase(it);
+
+                // add particle to new grid
+                grid[new_grid_index_x][new_grid_index_y].parts.push_back(&parts[i]);
+            }
+        }
     }
-    // std::cout << "2" << std::endl;
-}
-    // #pragma omp barrier
+    // }
+    #pragma omp barrier
 }
