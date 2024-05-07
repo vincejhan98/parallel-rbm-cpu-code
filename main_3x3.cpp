@@ -50,34 +50,6 @@ char* find_string_option(int argc, char** argv, const char* option, char* defaul
     return default_value;
 }
 
-void init_weights_bias(int num_nodes, std::vector<std::vector<float>>& weights,
-               std::vector<std::vector<float>>& weights_T,
-               float visible_bias[], float hidden_bias[]) {
-    // Initialize random number generator
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> dis(-100.0, 100.0); // Distribution for float values between -100 and 100
-
-    // Initialize weights matrix and its transpose
-    weights.resize(num_nodes, std::vector<float>(num_nodes));
-    weights_T.resize(num_nodes, std::vector<float>(num_nodes));
-    for (int i = 0; i < num_nodes; ++i) {
-        for (int j = 0; j < num_nodes; ++j) {
-            weights[i][j] = dis(gen); // Random float value for weight
-            weights_T[j][i] = weights[i][j]; // Transpose
-        }
-    }
-
-    // Initialize visible bias
-    for (int i = 0; i < num_nodes; ++i) {
-        visible_bias[i] = dis(gen); // Random float value for visible bias
-    }
-
-    // Initialize hidden bias
-    for (int i = 0; i < num_nodes; ++i) {
-        hidden_bias[i] = dis(gen); // Random float value for hidden bias
-    }
-}
 // ==============
 // Main Function
 // ==============
@@ -99,23 +71,26 @@ int main(int argc, char** argv) {
     std::ofstream fsave(savename);
 
     // Experiment Settings
-    int seed = find_int_arg(argc, argv, "-s", 7);
-    int iterations = find_int_arg(argc, argv, "-i", 50000);
+    int seed = find_int_arg(argc, argv, "-s", 0);
+    int iterations = find_int_arg(argc, argv, "-i", 1000);
 
     // Initial nodes setup
-    int num_nodes = find_int_arg(argc, argv, "-n", 150);
+    int num_nodes = find_int_arg(argc, argv, "-n", 3);
     float* visibles = new float[num_nodes];
     float* hiddens = new float[num_nodes];
     init_nodes(num_nodes, seed, visibles);
     init_nodes(num_nodes, seed, hiddens);
 
-    // Experiment 2
-    std::vector<std::vector<float>> weights;
-    std::vector<std::vector<float>> weights_T;
-    float visible_bias[num_nodes];
-    float hidden_bias[num_nodes];
-    // randomize weighs and bias
-    init_weights_bias(num_nodes, weights, weights_T, visible_bias, hidden_bias);
+    // Experiment 1
+    std::vector<std::vector<float>> weights = {{-9, -9, -1},
+                                              {-12, 4, -10},
+                                              {4, -12, -10}};
+    std::vector<std::vector<float>> weights_T = {{-9, -12, 4},
+                                               {-9, 4, -12},
+                                               {-1, -10, -10}};
+    float visible_bias[] = {6, 6, 4};
+    float hidden_bias[] = {4, 6, 6};
+    float clamp = 1;
 
     // Algorithm
     auto start_time = std::chrono::steady_clock::now();
@@ -125,7 +100,7 @@ int main(int argc, char** argv) {
     #endif
     {
         for (int step = 0; step < iterations; ++step) {
-            simulate_one_step(num_nodes, visibles, hiddens, weights, weights_T, visible_bias, hidden_bias);
+            simulate_one_step(num_nodes, visibles, hiddens, weights, weights_T, visible_bias, hidden_bias, clamp);
             
             // Save state if necessary
     #ifdef _OPENMP
@@ -134,6 +109,7 @@ int main(int argc, char** argv) {
             if (fsave.good()) {
                 save(fsave, visibles, num_nodes);
             }
+            
         }
     }
 
@@ -143,6 +119,6 @@ int main(int argc, char** argv) {
     double seconds = diff.count();
 
     // Finalize
-    std::cout << "Simulation Time = " << seconds << " seconds for " << num_nodes << " nodes and " << iterations << " iterations\n";
+    std::cout << "Simulation Time = " << seconds << " seconds for " << num_nodes << " particles.\n";
     fsave.close();
 }

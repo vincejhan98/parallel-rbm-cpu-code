@@ -20,7 +20,7 @@ void init_nodes(int num_nodes, int seed, float* nodes) {
     }
 }
 
-void simulate_one_step(int num_nodes, float* visibles, float* hiddens, std::vector<std::vector<float>>& weights, std::vector<std::vector<float>>& weights_T, float* visible_bias, float* hidden_bias) {
+void simulate_one_step(int num_nodes, float* visibles, float* hiddens, std::vector<std::vector<float>>& weights, std::vector<std::vector<float>>& weights_T, float* visible_bias, float* hidden_bias, float clamp) {
     // assign nodes to threads
     int tid = omp_get_thread_num();
     if (tid >= num_nodes) return;
@@ -80,5 +80,5 @@ void simulate_one_step(int num_nodes, float* visibles, float* hiddens, std::vect
     #pragma omp barrier
 
     // clamp
-    // visibles[2] = clamp;
+    visibles[2] = clamp;
 }

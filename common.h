@@ -1,5 +1,6 @@
 #ifndef __CS267_COMMON_H__
 #define __CS267_COMMON_H__
+#include <vector>
 
 // Program Constants
 #define nsteps   1000
@@ -21,6 +22,6 @@ typedef struct particle_t {
 } particle_t;
 
 // Simulation routine
-void init_simulation(particle_t* parts, int num_parts, double size);
-void simulate_one_step(particle_t* parts, int num_parts, double size);
+void init_nodes(int num_nodes, int seed, float* nodes);
+void simulate_one_step(int num_nodes, float* visibles, float* hiddens, std::vector<std::vector<float>>& weights, std::vector<std::vector<float>>& weights_T, float* visible_bias, float* hidden_bias);
 #endif

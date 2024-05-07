@@ -56,7 +56,7 @@ void move(particle_t& p, double size) {
 static int grid_len;
 static double grid_square_size;
 
-void init_simulation(particle_t* parts, int num_parts, double size) {
+void init_nodes(particle_t* parts, int num_parts, double size) {
     grid_len = static_cast<int>(size / (cutoff*1.5)) + 1;
     grid_square_size = size / static_cast<double>(grid_len);
 
